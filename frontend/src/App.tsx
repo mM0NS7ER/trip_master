@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import ChatLayout from "./components/ChatLayout"
+import { AuthProvider } from "./store/authStore.tsx"
 
 function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
@@ -27,14 +28,16 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route path="/" element={<Navigate to={`/chat/${currentSessionId || createNewSession()}`} replace />} />
-          <Route path="/chat/:sessionId" element={<ChatLayout />} />
-        </Routes>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            <Route path="/" element={<Navigate to={`/chat/${currentSessionId || createNewSession()}`} replace />} />
+            <Route path="/chat/:sessionId" element={<ChatLayout />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   )
 }
 

@@ -6,6 +6,7 @@ import Sidebar from "./Sidebar"
 import History from "./History"
 import ChatArea from "./ChatArea/ChatArea"
 import MapArea from "./MapArea"
+import AuthModal from "./AuthModal"
 
 const ChatLayout = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -46,6 +47,7 @@ const ChatLayout = () => {
           <MapArea />
         </div>
       </div>
+      <AuthModal />
     </div>
   )
 }
