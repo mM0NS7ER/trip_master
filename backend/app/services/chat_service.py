@@ -299,10 +299,28 @@ class ChatService:
 
         if request.stream:
             # 流式响应
-            # 直接返回异步生成器
+            # 收集所有响应内容以便保存
+            ai_content = ""
+            
             async def generator():
+                nonlocal ai_content
                 async for chunk in self.stream_ai_api(api_messages, request.model):
+                    # 解析chunk并提取内容
+                    try:
+                        parsed_chunk = json.loads(chunk)
+                        if "choices" in parsed_chunk and parsed_chunk["choices"]:
+                            choice = parsed_chunk["choices"][0]
+                            if "delta" in choice and "content" in choice["delta"]:
+                                ai_content += choice["delta"]["content"]
+                    except json.JSONDecodeError:
+                        pass
+                    
                     yield chunk
+                
+                # 流式响应完成后，保存完整的AI回复
+                if ai_content:
+                    self.save_message(chat_id, ai_content, SenderType.AI)
+            
             return generator()
         else:
             # 非流式响应
