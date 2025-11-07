@@ -42,12 +42,9 @@ def signup(
         raise UsernameAlreadyExistsException(user_data.username)
 
     # 验证密码强度
-    if len(user_data.password) < 8:
+    if len(user_data.password) < 6:
         raise WeakPasswordException()
 
-    # 检查密码是否包含至少一个大写字母、一个小写字母和一个数字
-    if not re.search(r'[A-Z]', user_data.password) or not re.search(r'[a-z]', user_data.password) or not re.search(r'[0-9]', user_data.password):
-        raise WeakPasswordException()
 
     # 创建新用户
     try:
@@ -69,6 +66,27 @@ def signup(
         "user": user,
         "token": access_token
     }
+
+@router.post("/login")
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+) -> Any:
+    """OAuth2兼容的登录接口"""
+    # 验证用户凭据
+    user = UserService.authenticate_user(
+        db, email=form_data.username, password=form_data.password
+    )
+    if not user:
+        raise InvalidCredentialsException()
+
+    # 创建访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/signin", response_model=UserAndToken)
 def signin(

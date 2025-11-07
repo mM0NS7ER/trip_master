@@ -1,6 +1,7 @@
 
 import { useState } from "react"
 import { useParams } from "react-router-dom"
+import { v4 as uuidv4 } from "uuid"
 import Header from "./Header"
 import Sidebar from "./Sidebar"
 import History from "./History"
@@ -12,10 +13,34 @@ const ChatLayout = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
   const [showHistory, setShowHistory] = useState(false)
 
-  const handleNewChat = () => {
-    // 生成新的sessionId并导航
-    const newSessionId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`
-    window.location.href = `/chat/${newSessionId}`
+  const handleNewChat = async () => {
+    try {
+      // 从localStorage获取token
+      const token = localStorage.getItem('token');
+      
+      // 调用后端API创建新会话
+      const response = await fetch('http://localhost:8000/api/chats/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!response.ok) {
+        throw new Error('创建新会话失败');
+      }
+
+      const data = await response.json();
+      const newSessionId = data.id;
+      
+      // 导航到新会话
+      window.location.href = `/chat/${newSessionId}`;
+    } catch (error) {
+      console.error("创建新会话出错:", error);
+      alert('创建新会话失败，请稍后再试');
+    }
   }
 
   const handleToggleHistory = () => {

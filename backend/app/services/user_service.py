@@ -1,5 +1,6 @@
 from typing import Optional
 import traceback
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from ..core.security import get_password_hash, verify_password
 
 class UserService:
     @staticmethod
-    def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
+    def get_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
         """通过ID获取用户"""
         return db.query(User).filter(User.id == user_id).first()
 
@@ -92,7 +93,7 @@ class UserService:
         return user
 
     @staticmethod
-    def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[User]:
+    def update_user(db: Session, user_id: UUID, user_update: UserUpdate) -> Optional[User]:
         """更新用户信息"""
         db_user = UserService.get_user_by_id(db, user_id)
         if not db_user:
@@ -107,7 +108,7 @@ class UserService:
         return db_user
 
     @staticmethod
-    def update_avatar(db: Session, user_id: int, avatar_url: str) -> Optional[User]:
+    def update_avatar(db: Session, user_id: UUID, avatar_url: str) -> Optional[User]:
         """更新用户头像"""
         db_user = UserService.get_user_by_id(db, user_id)
         if not db_user:

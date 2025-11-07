@@ -17,4 +17,14 @@ class Settings:
     PROJECT_NAME: str = "Trip Master API"
     API_V1_STR: str = "/api"
 
+    # AI服务配置
+    AI_MODEL: str = config("AI_MODEL", default="glm-4")
+    AI_API_KEY: str = config("AI_API_KEY", default="")
+    SYSTEM_PROMPT: str = config("SYSTEM_PROMPT", default="你是一个旅行规划师，帮助用户制定个性化的旅行计划。")
+    
+    # DeepSeek API配置 (保留作为备用)
+    DEEPSEEK_API_KEY: str = config("DEEPSEEK_API_KEY", default="")
+    DEEPSEEK_API_URL: str = config("DEEPSEEK_API_URL", default="https://api.deepseek.com/v1/chat/completions")
+    DEEPSEEK_MODEL: str = config("DEEPSEEK_MODEL", default="deepseek-chat")
+
 settings = Settings()

@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -27,7 +28,7 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    user_id: int = payload.get("sub")
+    user_id: UUID = UUID(payload.get("sub"))
     if user_id is None:
         raise credentials_exception
 

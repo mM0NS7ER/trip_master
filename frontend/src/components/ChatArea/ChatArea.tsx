@@ -30,10 +30,49 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
 
   // 从localStorage加载历史消息
   useEffect(() => {
-    const savedMessages = localStorage.getItem(`chat_${sessionId}`)
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages))
-    }
+    // 检查会话是否存在
+    const checkSessionExists = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`http://localhost:8000/api/chats/${sessionId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          // 会话不存在，创建新会话
+          const createResponse = await fetch('http://localhost:8000/api/chats/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({})
+          });
+
+          if (createResponse.ok) {
+            const data = await createResponse.json();
+            // 重定向到新创建的会话
+            window.location.href = `/chat/${data.id}`;
+            return;
+          }
+        }
+
+        // 会话存在，加载历史消息
+        const savedMessages = localStorage.getItem(`chat_${sessionId}`);
+        if (savedMessages) {
+          setMessages(JSON.parse(savedMessages));
+        }
+      } catch (error) {
+        console.error("检查会话出错:", error);
+      }
+    };
+
+    checkSessionExists();
   }, [sessionId])
 
   // 保存消息到localStorage
@@ -44,21 +83,107 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
   }, [messages, sessionId])
 
   // 处理发送消息
-  const handleSendMessage = (message: Message) => {
+  const handleSendMessage = async (message: Message) => {
     // 添加用户消息
     setMessages(prevMessages => [...prevMessages, message])
 
-    // 模拟AI回复
-    setTimeout(() => {
+    try {
+      // 从localStorage获取token
+      const token = localStorage.getItem('token');
+      
+      // 准备API请求
+      const response = await fetch(`http://localhost:8000/api/chats/${sessionId}/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: message.text }
+          ],
+          stream: true,
+          model: "glm-4"
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '获取AI回复失败');
+      }
+
+      // 处理流式响应
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let aiResponseText = "";
+
+      // 创建一个空的AI消息，稍后更新
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: "这是一个模拟回复。实际将使用DeepSeek API处理。",
+        text: "",
         sender: "ai",
         timestamp: new Date().toLocaleTimeString()
+      };
+      
+      // 添加空的AI消息
+      setMessages(prevMessages => [...prevMessages, aiResponse]);
+      
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+                    aiResponseText += data.choices[0].delta.content;
+                    
+                    // 更新AI消息
+                    setMessages(prevMessages => 
+                      prevMessages.map(msg => 
+                        msg.id === aiResponse.id 
+                          ? { ...msg, text: aiResponseText }
+                          : msg
+                      )
+                    );
+                  }
+                } catch (e) {
+                  console.error("解析流式数据错误:", e);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("读取流式响应错误:", error);
+          throw error;
+        }
       }
-      setMessages(prevMessages => [...prevMessages, aiResponse])
-      // TODO: Integrate backend API for AI response
-    }, 1000)
+    } catch (error) {
+      console.error("获取AI回复出错:", error);
+      
+      // 错误时添加一个包含详细错误信息的回复
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: (() => {
+          const errorMsg = error instanceof Error ? error.message : "未知错误";
+          if (errorMsg.includes("Insufficient Balance")) {
+            return "抱歉，API服务暂时不可用，可能是账户余额不足。请联系管理员充值。";
+          }
+          return `抱歉，我现在无法回复。错误信息：${errorMsg}`;
+        })(),
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString()
+      };
+      
+      setMessages(prevMessages => [...prevMessages, errorResponse]);
+    }
   }
 
   return (

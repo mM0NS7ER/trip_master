@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -32,8 +33,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // 初始时设为加载状态
   const [error, setError] = useState<string | null>(null);
+
+  // 初始化时检查本地存储中的token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // 如果有token，尝试从本地存储获取用户信息
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        } catch (e) {
+          console.error('解析用户数据失败', e);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+    }
+    setIsLoading(false); // 检查完成后设置加载状态为false
+  }, []);
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
@@ -89,8 +110,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isGuest: data.user.is_guest
       };
 
-      // 存储令牌到本地存储
+      // 存储令牌和用户信息到本地存储
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
 
       setUser(userData);
       setIsAuthModalOpen(false);
@@ -167,8 +189,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isGuest: data.user.is_guest
       };
 
-      // 存储令牌到本地存储
+      // 存储令牌和用户信息到本地存储
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
 
       setUser(userData);
       setIsAuthModalOpen(false);
@@ -183,7 +206,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
 
   const guestLogin = () => {
     const guestUser: User = {
