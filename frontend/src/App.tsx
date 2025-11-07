@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useEffect, useState } from "react"
 import ChatLayout from "./components/ChatLayout"
 import { AuthProvider } from "./store/authStore.tsx"
+import { Toaster } from "react-hot-toast"
 
 function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
@@ -35,6 +36,16 @@ function App() {
             <Route path="/" element={<Navigate to={`/chat/${currentSessionId || createNewSession()}`} replace />} />
             <Route path="/chat/:sessionId" element={<ChatLayout />} />
           </Routes>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: "#363636",
+                color: "#fff",
+              },
+            }}
+          />
         </div>
       </Router>
     </AuthProvider>

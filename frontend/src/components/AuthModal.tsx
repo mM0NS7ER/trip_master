@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore.tsx';
+import { toast } from 'react-hot-toast';
 
 const AuthModal: React.FC = () => {
   const {
@@ -86,8 +87,10 @@ const AuthModal: React.FC = () => {
     try {
       if (isLoginMode) {
         await login(email, password);
+        toast.success('登录成功！');
       } else {
         await register(email, password, name);
+        toast.success('注册成功！');
       }
     } catch (err) {
       // 错误已在store中处理

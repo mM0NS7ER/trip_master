@@ -1,0 +1,105 @@
+from datetime import timedelta
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+
+from ...core.database import get_db
+from ...core.security import create_access_token
+from ...core.config import settings
+from ...schemas.user import (
+    UserCreate, UserLogin, UserWithToken,
+    GuestUserWithToken, MessageResponse, ErrorResponse
+)
+from ...services.user_service import UserService
+
+router = APIRouter()
+
+@router.post("/signup", response_model=UserWithToken)
+def signup(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+) -> Any:
+    """用户注册"""
+    # 检查邮箱是否已存在
+    user = UserService.get_user_by_email(db, email=user_data.email)
+    if user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邮箱已被使用"
+        )
+
+    # 检查用户名是否已存在
+    user = UserService.get_user_by_username(db, username=user_data.username)
+    if user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户名已被使用"
+        )
+
+    # 创建新用户
+    user = UserService.create_user(db, user_data)
+
+    # 创建访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+
+    return {
+        "user": user,
+        "token": access_token
+    }
+
+@router.post("/signin", response_model=UserWithToken)
+def signin(
+    user_credentials: UserLogin,
+    db: Session = Depends(get_db)
+) -> Any:
+    """用户登录"""
+    # 验证用户凭据
+    user = UserService.authenticate_user(
+        db, email=user_credentials.email, password=user_credentials.password
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户名或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 创建访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+
+    return {
+        "user": user,
+        "token": access_token
+    }
+
+@router.post("/guest", response_model=GuestUserWithToken)
+def guest_signin(db: Session = Depends(get_db)) -> Any:
+    """访客登录"""
+    # 创建访客用户
+    user = UserService.create_guest_user(db)
+
+    # 创建访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+
+    return {
+        "user": user,
+        "token": access_token
+    }
+
+@router.post("/signout", response_model=MessageResponse)
+def signout() -> Any:
+    """用户登出"""
+    # 在实际应用中，这里可以将令牌加入黑名单
+    # 目前仅返回成功消息
+    return {"message": "登出成功"}
