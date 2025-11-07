@@ -1,45 +1,63 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import traceback
 
 from ...core.database import get_db
 from ...core.security import create_access_token
 from ...core.config import settings
+from ...core.exceptions import (
+    EmailAlreadyExistsException, UsernameAlreadyExistsException,
+    InvalidCredentialsException, DatabaseException, WeakPasswordException
+)
+import re
 from ...schemas.user import (
-    UserCreate, UserLogin, UserWithToken,
+    UserCreate, UserLogin, UserWithToken, UserAndToken,
     GuestUserWithToken, MessageResponse, ErrorResponse
 )
 from ...services.user_service import UserService
 
 router = APIRouter()
 
-@router.post("/signup", response_model=UserWithToken)
+@router.post("/signup", response_model=UserAndToken)
 def signup(
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ) -> Any:
     """用户注册"""
+    print(f"收到的注册数据: {user_data.dict()}")
     # 检查邮箱是否已存在
     user = UserService.get_user_by_email(db, email=user_data.email)
     if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被使用"
-        )
+        print(f"邮箱已被使用: {user_data.email}")
+        raise EmailAlreadyExistsException(user_data.email)
 
     # 检查用户名是否已存在
     user = UserService.get_user_by_username(db, username=user_data.username)
     if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已被使用"
-        )
+        print(f"用户名已被使用: {user_data.username}")
+        raise UsernameAlreadyExistsException(user_data.username)
+
+    # 验证密码强度
+    if len(user_data.password) < 8:
+        raise WeakPasswordException()
+
+    # 检查密码是否包含至少一个大写字母、一个小写字母和一个数字
+    if not re.search(r'[A-Z]', user_data.password) or not re.search(r'[a-z]', user_data.password) or not re.search(r'[0-9]', user_data.password):
+        raise WeakPasswordException()
 
     # 创建新用户
-    user = UserService.create_user(db, user_data)
+    try:
+        print(f"准备创建用户，数据: {user_data.dict()}")
+        user = UserService.create_user(db, user_data)
+        print(f"用户创建成功: {user.id}")
+    except Exception as e:
+        print(f"创建用户时出错: {str(e)}")
+        traceback.print_exc()
+        raise DatabaseException(f"创建用户失败: {str(e)}")
 
     # 创建访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -52,7 +70,7 @@ def signup(
         "token": access_token
     }
 
-@router.post("/signin", response_model=UserWithToken)
+@router.post("/signin", response_model=UserAndToken)
 def signin(
     user_credentials: UserLogin,
     db: Session = Depends(get_db)
@@ -63,11 +81,7 @@ def signin(
         db, email=user_credentials.email, password=user_credentials.password
     )
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise InvalidCredentialsException()
 
     # 创建访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -80,7 +94,7 @@ def signin(
         "token": access_token
     }
 
-@router.post("/guest", response_model=GuestUserWithToken)
+@router.post("/guest", response_model=UserAndToken)
 def guest_signin(db: Session = Depends(get_db)) -> Any:
     """访客登录"""
     # 创建访客用户

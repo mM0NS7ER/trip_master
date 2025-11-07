@@ -1,4 +1,5 @@
 from typing import Optional
+import traceback
 
 from sqlalchemy.orm import Session
 
@@ -25,23 +26,37 @@ class UserService:
     @staticmethod
     def create_user(db: Session, user: UserCreate) -> User:
         """创建新用户"""
-        hashed_password = get_password_hash(user.password)
-        db_user = User(
-            email=user.email,
-            username=user.username,
-            name=user.name,
-            hashed_password=hashed_password,
-            age=user.age,
-            bio=user.bio,
-            avatar_url=user.avatar_url,
-            is_active=user.is_active,
-            is_verified=user.is_verified,
-            is_guest=user.is_guest
-        )
-        db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
-        return db_user
+        try:
+            print(f"准备创建用户，输入数据: {user.dict()}")
+            hashed_password = get_password_hash(user.password)
+            print(f"密码哈希成功")
+            
+            db_user = User(
+                email=user.email,
+                username=user.username,
+                name=user.name,
+                hashed_password=hashed_password,
+                age=user.age,
+                bio=user.bio,
+                avatar_url=user.avatar_url,
+                is_active=user.is_active,
+                is_verified=user.is_verified,
+                is_guest=user.is_guest
+            )
+            
+            print(f"用户对象创建成功")
+            db.add(db_user)
+            print(f"用户对象添加到会话")
+            db.commit()
+            print(f"数据库提交成功")
+            db.refresh(db_user)
+            print(f"用户对象刷新成功，ID: {db_user.id}")
+            return db_user
+        except Exception as e:
+            print(f"创建用户时出错: {str(e)}")
+            traceback.print_exc()
+            db.rollback()
+            raise
 
     @staticmethod
     def create_guest_user(db: Session) -> User:

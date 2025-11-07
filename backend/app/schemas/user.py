@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
@@ -32,7 +33,7 @@ class UserUpdate(BaseModel):
 
 # 用户响应模型
 class User(UserBase):
-    id: int
+    id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -43,9 +44,14 @@ class User(UserBase):
 class UserWithToken(User):
     token: str
 
+# 用户和令牌分离的响应模型
+class UserAndToken(BaseModel):
+    user: User
+    token: str
+
 # 访客用户模型
 class GuestUser(UserBase):
-    id: int
+    id: UUID
     created_at: datetime
 
     class Config:
