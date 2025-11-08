@@ -10,6 +10,7 @@ from .core.exception_handlers import (
     http_exception_handler,
     validation_exception_handler
 )
+from .core.token_refresh_middleware import TokenRefreshMiddleware
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -32,6 +33,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 添加令牌刷新中间件
+app.add_middleware(TokenRefreshMiddleware)
 
 # 包含API路由
 app.include_router(api_router, prefix=settings.API_V1_STR)

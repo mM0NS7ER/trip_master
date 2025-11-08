@@ -79,4 +79,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* 隐藏浏览器扩展添加的元素 */
+  #clearly-root {
+    display: none !important;
+  }
 }

@@ -9,6 +9,8 @@ class Settings:
     SECRET_KEY: str = config("SECRET_KEY", default="your-secret-key-here")
     ALGORITHM: str = config("ALGORITHM", default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = config("ACCESS_TOKEN_EXPIRE_MINUTES", default=30, cast=int)
+    # 令牌自动续期阈值（分钟），当令牌剩余时间少于这个值时，会自动续期
+    TOKEN_REFRESH_THRESHOLD_MINUTES: int = config("TOKEN_REFRESH_THRESHOLD_MINUTES", default=5, cast=int)
 
     # 应用配置
     DEBUG: bool = config("DEBUG", default=True, cast=bool)
