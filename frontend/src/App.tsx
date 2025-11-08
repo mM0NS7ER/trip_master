@@ -4,22 +4,10 @@ import { useEffect, useState } from "react"
 import ChatLayout from "./components/ChatLayout"
 import { AuthProvider } from "./store/authStore.tsx"
 import { Toaster } from "react-hot-toast"
+import GlobalConfirmDialog from "./components/GlobalConfirmDialog"
 
 function App() {
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-
-  // 检查当前活跃会话
-  useEffect(() => {
-    const savedSessionId = localStorage.getItem('currentSessionId')
-    if (savedSessionId) {
-      setCurrentSessionId(savedSessionId)
-    } else {
-      // 如果没有活跃会话，创建一个新的
-      const newSessionId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`
-      localStorage.setItem('currentSessionId', newSessionId)
-      setCurrentSessionId(newSessionId)
-    }
-  }, [])
+  // 不再在应用启动时创建会话ID，而是延迟到用户发送第一条消息时
 
   // 创建新会话
   const createNewSession = () => {
@@ -33,7 +21,7 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            <Route path="/" element={<Navigate to={`/chat/${currentSessionId || createNewSession()}`} replace />} />
+            <Route path="/" element={<Navigate to="/chat/new" replace />} />
             <Route path="/chat/:sessionId" element={<ChatLayout />} />
           </Routes>
           <Toaster
@@ -46,6 +34,7 @@ function App() {
               },
             }}
           />
+          <GlobalConfirmDialog />
         </div>
       </Router>
     </AuthProvider>

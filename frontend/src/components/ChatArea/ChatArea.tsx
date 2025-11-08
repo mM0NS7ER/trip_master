@@ -12,9 +12,10 @@ interface Message {
 
 interface ChatAreaProps {
   sessionId: string
+  onCreateSession?: () => Promise<string | null>
 }
 
-const ChatArea = ({ sessionId }: ChatAreaProps) => {
+const ChatArea = ({ sessionId, onCreateSession }: ChatAreaProps) => {
   const [messages, setMessages] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -28,13 +29,19 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
     scrollToBottom()
   }, [messages])
 
-  // 从localStorage加载历史消息
+  // 从后端加载历史消息
   useEffect(() => {
-    // 检查会话是否存在
-    const checkSessionExists = async () => {
+    // 如果是新会话，不检查会话是否存在，等待用户发送第一条消息时再创建
+    if (sessionId === "new") {
+      return;
+    }
+
+    // 检查会话是否存在并获取历史消息
+    const checkSessionAndLoadMessages = async () => {
       try {
         const token = localStorage.getItem('token');
-        
+
+        // 检查会话是否存在
         const response = await fetch(`http://localhost:8000/api/chats/${sessionId}`, {
           method: 'GET',
           headers: {
@@ -62,17 +69,65 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
           }
         }
 
-        // 会话存在，加载历史消息
+        // 会话存在，从后端获取历史消息
+        try {
+          const messagesResponse = await fetch(`http://localhost:8000/api/chats/${sessionId}/messages`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (messagesResponse.ok) {
+            const messagesData = await messagesResponse.json();
+            console.log("从后端获取的消息数据:", messagesData); // 调试日志
+
+            // 转换后端消息格式为前端需要的格式
+            // 修复：使用msg.sender而不是msg.role
+            const formattedMessages = messagesData.messages.map((msg: any) => {
+              // 确保sender字段正确设置
+              const sender = msg.sender === "user" ? "user" : "ai";
+              console.log(`消息ID: ${msg.id}, 发送者: ${msg.sender}, 转换后: ${sender}`); // 调试日志
+
+              return {
+                id: msg.id,
+                text: msg.content,
+                sender: sender,
+                timestamp: new Date(msg.created_at).toLocaleTimeString()
+              };
+            });
+
+            console.log("格式化后的消息:", formattedMessages); // 调试日志
+            setMessages(formattedMessages);
+            // 同时保存到localStorage作为缓存
+            localStorage.setItem(`chat_${sessionId}`, JSON.stringify(formattedMessages));
+          } else {
+            // 如果获取消息失败，尝试从localStorage加载
+            const savedMessages = localStorage.getItem(`chat_${sessionId}`);
+            if (savedMessages) {
+              setMessages(JSON.parse(savedMessages));
+            }
+          }
+        } catch (error) {
+          console.error("获取历史消息出错:", error);
+          // 出错时尝试从localStorage加载
+          const savedMessages = localStorage.getItem(`chat_${sessionId}`);
+          if (savedMessages) {
+            setMessages(JSON.parse(savedMessages));
+          }
+        }
+      } catch (error) {
+        console.error("检查会话出错:", error);
+        // 出错时尝试从localStorage加载
         const savedMessages = localStorage.getItem(`chat_${sessionId}`);
         if (savedMessages) {
           setMessages(JSON.parse(savedMessages));
         }
-      } catch (error) {
-        console.error("检查会话出错:", error);
       }
     };
 
-    checkSessionExists();
+    checkSessionAndLoadMessages();
   }, [sessionId])
 
   // 保存消息到localStorage
@@ -84,15 +139,25 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
 
   // 处理发送消息
   const handleSendMessage = async (message: Message) => {
+    // 如果是新会话且还没有创建实际会话ID，先创建会话
+    let actualSessionId: string | null = sessionId;
+    if (sessionId === "new" && onCreateSession) {
+      actualSessionId = await onCreateSession();
+      if (!actualSessionId) {
+        return;
+      }
+    }
+
+
     // 添加用户消息
     setMessages(prevMessages => [...prevMessages, message])
 
     try {
       // 从localStorage获取token
       const token = localStorage.getItem('token');
-      
+
       // 准备API请求
-      const response = await fetch(`http://localhost:8000/api/chats/${sessionId}/completions`, {
+      const response = await fetch(`http://localhost:8000/api/chats/${actualSessionId}/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,37 +183,37 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
       let aiResponseText = "";
 
       // 创建一个空的AI消息，稍后更新
-      
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         text: "",
         sender: "ai",
         timestamp: new Date().toLocaleTimeString()
       };
-      
+
       // 添加空的AI消息
       setMessages(prevMessages => [...prevMessages, aiResponse]);
-      
+
       if (reader) {
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
-            
+
             for (const line of lines) {
               if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                 try {
                   const data = JSON.parse(line.substring(6));
                   if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
                     aiResponseText += data.choices[0].delta.content;
-                    
+
                     // 更新AI消息
-                    setMessages(prevMessages => 
-                      prevMessages.map(msg => 
-                        msg.id === aiResponse.id 
+                    setMessages(prevMessages =>
+                      prevMessages.map(msg =>
+                        msg.id === aiResponse.id
                           ? { ...msg, text: aiResponseText }
                           : msg
                       )
@@ -167,7 +232,7 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
       }
     } catch (error) {
       console.error("获取AI回复出错:", error);
-      
+
       // 错误时添加一个包含详细错误信息的回复
       const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -181,7 +246,7 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
         sender: "ai",
         timestamp: new Date().toLocaleTimeString()
       };
-      
+
       setMessages(prevMessages => [...prevMessages, errorResponse]);
     }
   }

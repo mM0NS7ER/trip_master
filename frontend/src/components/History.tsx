@@ -1,56 +1,109 @@
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Trash2, MessageSquare } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useAuthStore } from "@/store/authStore"
+import { useDialogStore } from "@/store/dialogStore"
+import { useChatStore } from "@/store/chatStore"
 
 interface ChatHistory {
   id: string
   title: string
   lastMessage: string
   timestamp: string
+  userId?: string
 }
 
 const History = ({ isOpen, onClose, onSelectChat }: { isOpen: boolean, onClose: () => void, onSelectChat: (id: string) => void }) => {
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([])
+  const [filteredHistory, setFilteredHistory] = useState<ChatHistory[]>([])
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const { openDeleteConfirm } = useDialogStore()
+  const { chats, setChats } = useChatStore()
+  const historyRef = useRef<HTMLDivElement>(null)
 
-  // 模拟加载历史记录
+  // 加载用户聊天记录
   useEffect(() => {
-    // 从localStorage获取历史记录
-    const savedHistory = localStorage.getItem('chatHistory')
-    if (savedHistory) {
-      setChatHistory(JSON.parse(savedHistory))
-    } else {
-      // 模拟数据
-      const mockHistory = [
-        {
-          id: "12345",
-          title: "北京三日游",
-          lastMessage: "故宫的门票怎么预订？",
-          timestamp: "2023-08-15 14:30"
-        },
-        {
-          id: "67890",
-          title: "上海美食之旅",
-          lastMessage: "推荐一些上海的特色小吃",
-          timestamp: "2023-08-14 10:15"
-        },
-        {
-          id: "11111",
-          title: "云南大理洱海",
-          lastMessage: "洱海附近有什么推荐的民宿？",
-          timestamp: "2023-08-12 18:45"
+    const fetchChatHistory = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          // 用户未登录，清空历史记录
+          setChats([]);
+          return;
         }
-      ]
-      setChatHistory(mockHistory)
+
+        const response = await fetch('http://localhost:8000/api/chats', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('获取聊天记录失败');
+        }
+
+        const data = await response.json();
+        // 确保数据格式符合接口要求
+        const formattedHistory = data.chats.map((chat: any) => ({
+          id: chat.id,
+          title: chat.title || '未命名会话',
+          lastMessage: chat.last_message || '',
+          timestamp: new Date(chat.updated_at).toLocaleString('zh-CN'),
+          userId: chat.user_id
+        }));
+        
+        setChats(formattedHistory);
+      } catch (error) {
+        console.error('获取聊天记录失败:', error);
+        // 出错时设置空数组，避免显示错误数据
+        setChats([]);
+      }
+    };
+
+    fetchChatHistory();
+  }, [user?.id, setChats]); // 当用户ID变化时重新获取数据
+
+  // 过滤历史记录，只显示当前用户的记录
+  useEffect(() => {
+    if (user) {
+      const userHistory = chats.filter(chat => 
+        chat.userId === user.id || !chat.userId // 兼容没有userId的旧数据
+      )
+      setFilteredHistory(userHistory)
+    } else {
+      // 如果用户未登录，显示访客记录或空列表
+      const guestHistory = chats.filter(chat => !chat.userId)
+      setFilteredHistory(guestHistory)
     }
-  }, [])
+  }, [chats, user])
+
+  // 点击外部区域关闭History组件
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    // 只有当History组件打开时才添加事件监听器
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    // 清理事件监听器
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen, onClose])
 
   const handleDeleteChat = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const updatedHistory = chatHistory.filter(chat => chat.id !== id)
-    setChatHistory(updatedHistory)
-    localStorage.setItem('chatHistory', JSON.stringify(updatedHistory))
+    // 打开全局确认对话框
+    openDeleteConfirm(id)
   }
 
   const handleSelectChat = (id: string) => {
@@ -59,7 +112,7 @@ const History = ({ isOpen, onClose, onSelectChat }: { isOpen: boolean, onClose: 
   }
 
   return (
-    <div className={`fixed left-20 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 z-10 ${isOpen ? "translate-x" : "-translate-x-96"}`}>
+    <div ref={historyRef} className={`fixed left-20 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 z-10 ${isOpen ? "translate-x" : "-translate-x-96"}`}>
       <div className="p-4 border-b flex justify-between items-center">
         <h2 className="text-lg font-semibold">历史会话</h2>
         <button
@@ -70,13 +123,13 @@ const History = ({ isOpen, onClose, onSelectChat }: { isOpen: boolean, onClose: 
         </button>
       </div>
       <div className="overflow-y-auto h-[calc(100%-4rem)]">
-        {chatHistory.length === 0 ? (
+        {filteredHistory.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             暂无历史会话
           </div>
         ) : (
           <ul>
-            {chatHistory.map((chat) => (
+            {filteredHistory.map((chat) => (
               <li
                 key={chat.id}
                 className="p-4 border-b hover:bg-gray-50 cursor-pointer flex justify-between items-center"
@@ -101,7 +154,8 @@ const History = ({ isOpen, onClose, onSelectChat }: { isOpen: boolean, onClose: 
           </ul>
         )}
       </div>
-      {/* TODO: Integrate backend API */}
+
+
     </div>
   )
 }
