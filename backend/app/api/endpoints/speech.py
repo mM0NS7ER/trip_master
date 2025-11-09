@@ -23,7 +23,7 @@ async def speech_to_text(
     db: Session = Depends(get_db)
 ):
     """
-    将语音转换为文本
+    将语音转换为文本 - 改进版
     """
     try:
         # 检查文件类型
@@ -55,9 +55,8 @@ async def speech_to_text(
 
         logger.info(f"用户 {current_user.id} 上传了音频文件，大小: {len(audio_bytes)} bytes, 类型: {audio_file.content_type}")
 
-        # 如果是webm格式，可能需要转换为WAV格式
-        # 这里我们直接传递给SpeechService，让服务处理转换
-        result = await SpeechService.speech_to_text(audio_bytes)
+        # 使用改进版语音识别服务
+        result = await SpeechService.speech_to_text(audio_bytes, audio_file.content_type)
 
         if not result["success"]:
             logger.error(f"语音识别失败: {result.get('error', '未知错误')}")

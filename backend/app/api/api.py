@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import auth, users, chat, speech_improved as speech
+from .endpoints import auth, users, chat, speech
 
 api_router = APIRouter()
 
