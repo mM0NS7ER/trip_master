@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +12,15 @@ from .core.exception_handlers import (
     validation_exception_handler
 )
 from .core.token_refresh_middleware import TokenRefreshMiddleware
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
 
 # 创建FastAPI应用实例
 app = FastAPI(

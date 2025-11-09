@@ -28,5 +28,10 @@ class Settings:
     DEEPSEEK_API_KEY: str = config("DEEPSEEK_API_KEY", default="")
     DEEPSEEK_API_URL: str = config("DEEPSEEK_API_URL", default="https://api.deepseek.com/v1/chat/completions")
     DEEPSEEK_MODEL: str = config("DEEPSEEK_MODEL", default="deepseek-chat")
+    
+    # 科大讯飞语音识别API配置
+    XUNFEI_APP_ID: str = config("XUNFEI_APP_ID", default="")
+    XUNFEI_API_KEY: str = config("XUNFEI_API_KEY", default="")
+    XUNFEI_API_SECRET: str = config("XUNFEI_API_SECRET", default="")
 
 settings = Settings()
