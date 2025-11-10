@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { useDialogStore } from "@/store/dialogStore"
 import { useChatStore } from "@/store/chatStore"
+import { apiGet } from "@/utils/api"
 
 interface ChatHistory {
   id: string
@@ -34,13 +35,7 @@ const History = ({ isOpen, onClose, onSelectChat }: { isOpen: boolean, onClose: 
           return;
         }
 
-        const response = await fetch('http://localhost:8000/api/chats', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await apiGet('/chats');
 
         if (!response.ok) {
           throw new Error('获取聊天记录失败');

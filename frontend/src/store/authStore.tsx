@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiPost, setLogoutHandler } from '@/utils/api';
 
 interface User {
   id: string;
@@ -36,6 +37,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true); // 初始时设为加载状态
   const [error, setError] = useState<string | null>(null);
 
+  // 注册logout处理函数到API工具
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, []);
+
   // 初始化时检查本地存储中的token
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -65,11 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      const response = await apiPost('/auth/signin', { email, password });
 
       if (!response.ok) {
         let errorMessage = '登录失败';
@@ -131,11 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name, username })
-      });
+      const response = await apiPost('/auth/signup', { email, password, name, username });
 
       if (!response.ok) {
         let errorMessage = '注册失败';
@@ -210,6 +208,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    // 退出登录后跳转到新会话页面
+    window.location.href = '/chat/new';
   };
 
   const guestLogin = () => {

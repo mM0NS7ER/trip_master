@@ -1,6 +1,7 @@
 
 import { useState, useRef } from "react"
 import { Mic, MicOff, Send } from "lucide-react"
+import { apiRequest } from "@/utils/api"
 
 interface Message {
   id: string
@@ -89,7 +90,7 @@ const InputSection = ({ onSendMessage }: InputSectionProps) => {
 
           console.log("发送语音识别请求...")
 
-          const response = await fetch("/api/speech/speech-to-text", {
+          const response = await apiRequest("/api/speech/speech-to-text", {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,

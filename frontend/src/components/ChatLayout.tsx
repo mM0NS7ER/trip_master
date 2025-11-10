@@ -8,6 +8,7 @@ import ChatArea from "./ChatArea/ChatArea"
 import MapArea from "./MapArea"
 import AuthModal from "./AuthModal"
 import { useChatStore } from "@/store/chatStore"
+import { apiGet, apiPost } from "@/utils/api"
 
 const ChatLayout = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -25,13 +26,7 @@ const ChatLayout = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/chats', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiGet('/chats');
 
       if (!response.ok) {
         throw new Error('获取聊天记录失败');
@@ -66,14 +61,7 @@ const ChatLayout = () => {
       const token = localStorage.getItem('token');
 
       // 调用后端API创建新会话
-      const response = await fetch('http://localhost:8000/api/chats/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({})
-      });
+      const response = await apiPost('/chats/', {});
 
       if (!response.ok) {
         throw new Error('创建新会话失败');

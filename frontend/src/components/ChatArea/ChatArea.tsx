@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import WelcomeSection from "./WelcomeSection"
 import InputSection from "./InputSection"
+import { apiGet, apiPost } from "@/utils/api"
 
 interface Message {
   id: string
@@ -43,24 +44,11 @@ const ChatArea = ({ sessionId, onCreateSession, onMessageSent }: ChatAreaProps) 
         const token = localStorage.getItem('token');
 
         // 检查会话是否存在
-        const response = await fetch(`http://localhost:8000/api/chats/${sessionId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await apiGet(`/chats/${sessionId}`);
 
         if (!response.ok) {
           // 会话不存在，创建新会话
-          const createResponse = await fetch('http://localhost:8000/api/chats/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({})
-          });
+          const createResponse = await apiPost('/chats/', {});
 
           if (createResponse.ok) {
             const data = await createResponse.json();
@@ -72,13 +60,7 @@ const ChatArea = ({ sessionId, onCreateSession, onMessageSent }: ChatAreaProps) 
 
         // 会话存在，从后端获取历史消息
         try {
-          const messagesResponse = await fetch(`http://localhost:8000/api/chats/${sessionId}/messages`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const messagesResponse = await apiGet(`/chats/${sessionId}/messages`);
 
           if (messagesResponse.ok) {
             const messagesData = await messagesResponse.json();
@@ -158,19 +140,12 @@ const ChatArea = ({ sessionId, onCreateSession, onMessageSent }: ChatAreaProps) 
       const token = localStorage.getItem('token');
 
       // 准备API请求
-      const response = await fetch(`http://localhost:8000/api/chats/${actualSessionId}/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: "user", content: message.text }
-          ],
-          stream: true,
-          model: "glm-4"
-        })
+      const response = await apiPost(`/chats/${actualSessionId}/completions`, {
+        messages: [
+          { role: "user", content: message.text }
+        ],
+        stream: true,
+        model: "glm-4"
       });
 
       if (!response.ok) {

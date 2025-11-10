@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useDialogStore } from '@/store/dialogStore';
 import { toast } from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
+import { apiDelete } from '@/utils/api';
 
 const GlobalConfirmDialog = () => {
   const { isDeleteConfirmOpen, chatIdToDelete, closeDeleteConfirm } = useDialogStore();
@@ -23,13 +24,7 @@ const GlobalConfirmDialog = () => {
       // 显示加载提示
       toast.loading('正在删除会话...', { id: 'delete-chat' });
 
-      const response = await fetch(`http://localhost:8000/api/chats/${chatIdToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiDelete(`/chats/${chatIdToDelete}`);
 
       if (!response.ok) {
         throw new Error('删除聊天记录失败');
