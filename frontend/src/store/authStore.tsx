@@ -24,7 +24,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string,username: string) => Promise<void>;
   logout: () => void;
-  guestLogin: () => void;
   clearError: () => void;
 }
 
@@ -71,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiPost('/auth/signin', { email, password });
+      const response = await apiPost('/auth/signin', { email, password }, {}, true);
 
       if (!response.ok) {
         let errorMessage = '登录失败';
@@ -212,19 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/chat/new';
   };
 
-  const guestLogin = () => {
-    const guestUser: User = {
-      id: `guest-${Date.now()}`,
-      email: 'guest@example.com',
-      name: '访客用户',
-      age: 18,
-      bio: '这是一个访客账户，部分功能受限',
-      isGuest: true
-    };
 
-    setUser(guestUser);
-    setIsAuthModalOpen(false);
-  };
 
   return (
     <AuthContext.Provider
@@ -240,7 +227,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         register,
         logout,
-        guestLogin,
         clearError,
       }}
     >

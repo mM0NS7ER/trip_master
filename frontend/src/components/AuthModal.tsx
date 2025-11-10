@@ -108,6 +108,11 @@ const AuthModal: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : "操作失败，请稍后再试";
       toast.error(errorMessage);
       console.error("认证错误:", err);
+
+      // 如果是登录模式且发生错误，清空密码字段
+      if (isLoginMode) {
+        setPassword('');
+      }
     }
   };
 

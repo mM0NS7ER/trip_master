@@ -2,6 +2,8 @@
 import { useState, useRef } from "react"
 import { Mic, MicOff, Send } from "lucide-react"
 import { apiRequest } from "@/utils/api"
+import { useAuthStore } from "@/store/authStore"
+import { toast } from "react-hot-toast"
 
 interface Message {
   id: string
@@ -20,9 +22,17 @@ const InputSection = ({ onSendMessage }: InputSectionProps) => {
   const [isProcessing, setIsProcessing] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const { user, openAuthModal } = useAuthStore()
 
   const handleSend = () => {
     if (inputText.trim() === "") return
+
+    // 检查用户是否已登录
+    if (!user) {
+      toast.error("请先登录后再发送消息");
+      openAuthModal();
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -43,6 +53,13 @@ const InputSection = ({ onSendMessage }: InputSectionProps) => {
   }
 
   const startRecording = async () => {
+    // 检查用户是否已登录
+    if (!user) {
+      toast.error("请先登录后再使用语音功能");
+      openAuthModal();
+      return;
+    }
+
     try {
       // 请求麦克风权限
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })

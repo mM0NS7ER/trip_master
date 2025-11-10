@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore.tsx"
 import UserProfile from "./UserProfile.tsx"
+import { toast } from "react-hot-toast"
 
 interface SidebarProps {
   onNewChat: () => void
@@ -13,7 +14,7 @@ interface SidebarProps {
 
 const Sidebar = ({ onNewChat, onToggleHistory, showHistory }: SidebarProps) => {
   const navigate = useNavigate()
-  const { openAuthModal, user, guestLogin } = useAuthStore()
+  const { openAuthModal, user } = useAuthStore()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   
   const handleUserClick = () => {
@@ -23,10 +24,18 @@ const Sidebar = ({ onNewChat, onToggleHistory, showHistory }: SidebarProps) => {
       openAuthModal()
     }
   }
+
+  // 检查用户是否已登录，如果未登录则提示并打开登录框
+  const checkAuthAndExecute = (callback: () => void, message: string) => {
+    if (user) {
+      callback();
+    } else {
+      toast.error(message);
+      openAuthModal();
+    }
+  };
   
-  const handleGuestLogin = () => {
-    guestLogin()
-  }
+
 
   return (
     <aside className="w-20 h-full bg-white border-r flex flex-col items-center relative">
@@ -46,35 +55,27 @@ const Sidebar = ({ onNewChat, onToggleHistory, showHistory }: SidebarProps) => {
           <MessageCircle className="w-6 h-6" />
         </button>
         <button
-          onClick={() => alert("搜索功能开发中")}
+          onClick={() => checkAuthAndExecute(() => alert("搜索功能开发中"), "请先登录后再使用搜索功能")}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-blue-500"
           title="搜索"
         >
           <Search className="w-6 h-6" />
         </button>
         <button
-          onClick={() => alert("收藏功能开发中")}
+          onClick={() => checkAuthAndExecute(() => alert("收藏功能开发中"), "请先登录后再使用收藏功能")}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-blue-500"
           title="收藏"
         >
           <Heart className="w-6 h-6" />
         </button>
         <button
-          onClick={() => alert("通知功能开发中")}
+          onClick={() => checkAuthAndExecute(() => alert("通知功能开发中"), "请先登录后再查看通知")}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-blue-500"
           title="通知"
         >
           <Bell className="w-6 h-6" />
         </button>
-        {!user && (
-          <button
-            onClick={handleGuestLogin}
-            className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-green-500"
-            title="访客登录"
-          >
-            <User className="w-6 h-6" />
-          </button>
-        )}
+
       </div>
       <div className="absolute bottom-4">
         <button

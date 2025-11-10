@@ -15,7 +15,8 @@ export const setLogoutHandler = (handler: () => void) => {
 // 创建一个API请求包装函数，处理身份验证失效的情况
 export const apiRequest = async (
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  skipAuthErrorHandler = false
 ): Promise<Response> => {
   // 获取token
   const token = localStorage.getItem('token');
@@ -45,7 +46,7 @@ export const apiRequest = async (
     });
 
     // 检查是否是身份验证错误
-    if (response.status === 401) {
+    if (response.status === 401 && !skipAuthErrorHandler) {
       // 显示身份失效提示
       toast.error('登录已过期，请重新登录');
 
@@ -78,12 +79,12 @@ export const apiRequest = async (
 export const apiGet = (endpoint: string, options: RequestInit = {}) => 
   apiRequest(endpoint, { method: 'GET', ...options });
 
-export const apiPost = (endpoint: string, data?: any, options: RequestInit = {}) => 
+export const apiPost = (endpoint: string, data?: any, options: RequestInit = {}, skipAuthErrorHandler = false) => 
   apiRequest(endpoint, {
     method: 'POST',
     body: data ? JSON.stringify(data) : undefined,
     ...options
-  });
+  }, skipAuthErrorHandler);
 
 export const apiPut = (endpoint: string, data?: any, options: RequestInit = {}) => 
   apiRequest(endpoint, {
