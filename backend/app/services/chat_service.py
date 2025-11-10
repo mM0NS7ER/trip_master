@@ -292,7 +292,14 @@ class ChatService:
 
         # 保存用户消息
         if request.messages and request.messages[-1].role == "user":
-            self.save_message(chat_id, request.messages[-1].content, SenderType.USER)
+            user_message = request.messages[-1].content
+            self.save_message(chat_id, user_message, SenderType.USER)
+
+            # 如果是第一条消息且标题为默认的"新的对话"，则更新标题
+            if db_chat.title == "新的对话":
+                # 截取消息的前30个字符作为标题
+                title = user_message[:30] + "..." if len(user_message) > 30 else user_message
+                self.update_chat_title(chat_id, user_id, title)
 
         # 准备发送给DeepSeek API的消息
         api_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]

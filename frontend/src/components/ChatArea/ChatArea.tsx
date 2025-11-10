@@ -13,9 +13,10 @@ interface Message {
 interface ChatAreaProps {
   sessionId: string
   onCreateSession?: () => Promise<string | null>
+  onMessageSent?: () => void  // 添加回调函数，用于通知父组件消息已发送
 }
 
-const ChatArea = ({ sessionId, onCreateSession }: ChatAreaProps) => {
+const ChatArea = ({ sessionId, onCreateSession, onMessageSent }: ChatAreaProps) => {
   const [messages, setMessages] = useState<Message[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -224,6 +225,11 @@ const ChatArea = ({ sessionId, onCreateSession }: ChatAreaProps) => {
                 }
               }
             }
+          }
+
+          // 消息发送完成后，调用回调函数通知父组件更新聊天历史
+          if (onMessageSent) {
+            onMessageSent();
           }
         } catch (error) {
           console.error("读取流式响应错误:", error);
