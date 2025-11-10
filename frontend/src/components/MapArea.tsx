@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 declare global {
   interface Window {
@@ -10,29 +10,59 @@ declare global {
 const MapArea = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  const [mapReady, setMapReady] = useState(false)
 
+  // 获取用户当前位置
   useEffect(() => {
-    // 初始化地图
-    if (mapContainerRef.current && !mapRef.current && window.AMap) {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setUserLocation([longitude, latitude])
+        },
+        (error) => {
+          console.error("获取位置失败:", error)
+          // 如果获取位置失败，使用默认位置（北京天安门）
+          setUserLocation([116.397428, 39.90923])
+        }
+      )
+    } else {
+      console.error("浏览器不支持地理定位")
+      // 如果不支持地理定位，使用默认位置（北京天安门）
+      setUserLocation([116.397428, 39.90923])
+    }
+  }, [])
+
+  // 初始化地图
+  useEffect(() => {
+    if (mapContainerRef.current && !mapRef.current && window.AMap && userLocation) {
       mapRef.current = new window.AMap.Map(mapContainerRef.current, {
         zoom: 15,
-        center: [116.397428, 39.90923], // 北京天安门
+        center: userLocation, // 使用用户当前位置
         mapStyle: "amap://styles/light" // 浅色主题
       })
 
-      // 添加标记点
-      const marker = new window.AMap.Marker({
-        position: [116.397428, 39.90923],
-        title: "北京天安门"
+      // 添加当前位置标记点
+      const userMarker = new window.AMap.Marker({
+        position: userLocation,
+        title: "我的位置",
+        icon: new window.AMap.Icon({
+          image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png',
+          size: new window.AMap.Size(25, 34),
+          imageSize: new window.AMap.Size(25, 34)
+        })
       })
-      mapRef.current.add(marker)
+      mapRef.current.add(userMarker)
 
-      // 添加另一个标记点
+      // 添加另一个标记点示例
       const marker2 = new window.AMap.Marker({
-        position: [116.407428, 39.91923],
-        title: "故宫博物院"
+        position: [userLocation[0] + 0.01, userLocation[1] + 0.01],
+        title: "附近地点"
       })
       mapRef.current.add(marker2)
+
+      setMapReady(true)
     }
 
     return () => {
@@ -42,16 +72,24 @@ const MapArea = () => {
         mapRef.current = null
       }
     }
-  }, [])
+  }, [userLocation])
 
   const handleSearch = () => {
     // 模拟搜索功能，随机改变地图中心点
-    if (mapRef.current) {
-      const randomLng = 116.397428 + (Math.random() - 0.5) * 0.1
-      const randomLat = 39.90923 + (Math.random() - 0.5) * 0.1
+    if (mapRef.current && userLocation) {
+      const randomLng = userLocation[0] + (Math.random() - 0.5) * 0.1
+      const randomLat = userLocation[1] + (Math.random() - 0.5) * 0.1
       mapRef.current.setCenter([randomLng, randomLat])
     }
     // TODO: Integrate backend for POI search
+  }
+
+  const handleBackToCurrentLocation = () => {
+    // 返回当前位置
+    if (mapRef.current && userLocation) {
+      mapRef.current.setCenter(userLocation)
+      mapRef.current.setZoom(15)
+    }
   }
 
   return (
@@ -74,6 +112,15 @@ const MapArea = () => {
         >
           搜索
         </button>
+        {mapReady && (
+          <button
+            onClick={handleBackToCurrentLocation}
+            className="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600"
+            title="返回当前位置"
+          >
+            定位
+          </button>
+        )}
       </div>
 
       {/* 地图容器 */}
