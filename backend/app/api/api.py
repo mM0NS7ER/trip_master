@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import auth, users, chat, speech
+from .endpoints import auth, users, chat, speech, websocket
 
 api_router = APIRouter()
 
@@ -15,3 +15,6 @@ api_router.include_router(chat.router, prefix="/chats", tags=["聊天"])
 
 # 注册语音识别相关路由
 api_router.include_router(speech.router, prefix="/speech", tags=["语音识别"])
+
+# 注册WebSocket相关路由
+api_router.include_router(websocket.router, tags=["WebSocket"])

@@ -85,8 +85,8 @@ const ChatLayout = () => {
   }
 
   const handleNewChat = async () => {
-    // 检查当前是否已经是新对话
-    if (sessionId === "new") {
+    // 检查当前是否已经是新对话，并且URL路径确实是"/chat/new"
+    if (sessionId === "new" && window.location.pathname === "/chat/new") {
       alert("当前已是最新对话");
       return;
     }

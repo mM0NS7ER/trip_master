@@ -9,8 +9,9 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import get_db
+from .database import get_db, get_supabase
 from ..models.user import User
+from ..services.auth_service import AuthService
 
 # OAuth2配置
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -93,59 +94,37 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
-    """获取当前用户，如果令牌即将过期则自动续期"""
+    """获取当前用户（使用Supabase Auth）"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="无法验证凭据",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    token_expired_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="令牌已过期，请重新登录",
-        headers={"WWW-Authenticate": "Bearer", "X-Error-Code": "TOKEN_EXPIRED"},
-    )
-
-    # 使用带过期检查的令牌验证
-    payload = verify_token_with_exp(token)
-    if payload is None:
+    try:
+        # 使用Supabase验证令牌
+        auth_service = AuthService()
+        # 尝试从请求头中获取refresh_token
+        # 这里暂时使用空字符串，因为从请求中获取refresh_token需要额外的实现
+        supabase_user = auth_service.get_current_user(access_token=token, refresh_token="")
+        
+        if supabase_user is None:
+            raise credentials_exception
+        
+        # 从数据库获取用户
+        user_id = UUID(supabase_user["id"])
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if user is None:
+            # 如果用户不在本地数据库中，尝试同步
+            user = auth_service.sync_supabase_user_to_db(
+                db=db,
+                supabase_user_id=supabase_user["id"],
+                email=supabase_user["email"],
+                user_data=supabase_user["user_metadata"] or {}
+            )
+        
+        return user
+    except Exception as e:
+        print(f"验证用户失败: {str(e)}")
         raise credentials_exception
-
-    # 检查令牌是否已过期
-    if payload.get("expired", False):
-        raise token_expired_exception
-
-    user_id_str: str = payload.get("sub")
-    if user_id_str is None:
-        raise credentials_exception
-
-    # 将字符串转换为UUID
-    user_id = UUID(user_id_str)
-
-    # 从数据库获取用户
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise credentials_exception
-
-    # 检查令牌是否需要续期
-    if should_refresh_token(payload):
-        # 创建新的访问令牌
-        new_token = create_access_token(data={"sub": str(user.id)})
-
-        # 在响应头中添加新令牌，前端需要处理这个响应头
-        # 由于FastAPI依赖注入机制的限制，我们需要使用全局上下文来传递新令牌
-        # 这里我们使用请求上下文来存储新令牌
-        from starlette.requests import Request
-        from starlette.contextvars import ContextVar
-        from contextvars import ContextVar
-
-        # 使用全局上下文变量来存储新令牌
-        try:
-            from .token_refresh_middleware import new_token_context
-            new_token_context.set(new_token)
-        except Exception as e:
-            # 如果设置上下文变量失败，至少记录日志
-            import logging
-            logging.error(f"Failed to set new token in context: {str(e)}")
-
-    return user

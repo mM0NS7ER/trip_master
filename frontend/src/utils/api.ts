@@ -22,10 +22,14 @@ export const apiRequest = async (
   const token = localStorage.getItem('token');
 
   // 设置默认headers
-  const defaultHeaders = {
-    'Content-Type': 'application/json',
+  const defaultHeaders: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` })
   };
+  
+  // 只有当body不是FormData时才设置Content-Type为application/json
+  if (!(options.body instanceof FormData)) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   // 合并headers
   const headers = {

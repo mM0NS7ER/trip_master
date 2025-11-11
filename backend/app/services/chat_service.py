@@ -8,13 +8,15 @@ from fastapi import HTTPException, status
 from ..models.chat import Chat
 from ..models.message import Message, SenderType
 from ..schemas.chat import ChatCreate, ChatCompletionRequest
-from ..schemas.message import MessageCreate
+from ..schemas.message import MessageCreate, MessageResponse
 from ..core.config import settings
+from ..services.analytics_service import RealtimeService
 
 
 class ChatService:
     def __init__(self, db: Session):
         self.db = db
+        self.realtime_service = RealtimeService()
 
     # 获取用户的所有聊天
     def get_user_chats(self, user_id: UUID) -> List[Chat]:
@@ -82,6 +84,25 @@ class ChatService:
         self.db.add(db_message)
         self.db.commit()
         self.db.refresh(db_message)
+        
+        # 广播消息到连接的客户端
+        import asyncio
+        from ..schemas.message import MessageResponse
+        
+        message_response = MessageResponse(
+            id=db_message.id,
+            chat_id=db_message.chat_id,
+            content=db_message.content,
+            sender=db_message.sender.value,
+            timestamp=db_message.timestamp,
+            created_at=db_message.created_at
+        )
+        
+        # 异步广播消息
+        asyncio.create_task(
+            self.realtime_service.broadcast_message(str(chat_id), message_response)
+        )
+        
         return db_message
 
     # 调用AI API (GLM)

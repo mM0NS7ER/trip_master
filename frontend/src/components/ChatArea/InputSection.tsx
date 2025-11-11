@@ -107,10 +107,11 @@ const InputSection = ({ onSendMessage }: InputSectionProps) => {
 
           console.log("发送语音识别请求...")
 
-          const response = await apiRequest("/api/speech/speech-to-text", {
+          const response = await apiRequest("/speech/speech-to-text", {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,
+              // 不设置Content-Type，让浏览器自动设置multipart/form-data边界
             },
             body: formData
           })

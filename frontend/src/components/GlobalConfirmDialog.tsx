@@ -4,10 +4,12 @@ import { useDialogStore } from '@/store/dialogStore';
 import { toast } from 'react-hot-toast';
 import { useChatStore } from '@/store/chatStore';
 import { apiDelete } from '@/utils/api';
+import { useNavigate } from 'react-router-dom';
 
 const GlobalConfirmDialog = () => {
   const { isDeleteConfirmOpen, chatIdToDelete, closeDeleteConfirm } = useDialogStore();
   const { removeChat } = useChatStore();
+  const navigate = useNavigate();
 
   const confirmDeleteChat = async () => {
     if (!chatIdToDelete) return;
@@ -35,6 +37,9 @@ const GlobalConfirmDialog = () => {
 
       // 更新聊天列表状态
       removeChat(chatIdToDelete);
+      
+      // 跳转到新的聊天页面
+      navigate('/chat/new');
     } catch (error) {
       console.error('删除聊天记录失败:', error);
       // 显示错误提示

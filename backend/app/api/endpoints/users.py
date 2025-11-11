@@ -73,16 +73,13 @@ def reset_password(
     password_reset: PasswordResetRequest,
     db: Session = Depends(get_db)
 ) -> Any:
-    """重置密码"""
-    # 在实际应用中，这里应该发送密码重置邮件
-    # 这里我们仅返回成功消息
-
-    # 检查用户是否存在
-    user = UserService.get_user_by_email(db, email=password_reset.email)
-    if not user:
-        # 为了安全，即使用户不存在也返回成功消息
+    """重置密码（使用Supabase Auth）"""
+    try:
+        # 使用Supabase发送密码重置邮件
+        auth_service = AuthService()
+        auth_service.reset_password(email=password_reset.email)
         return {"message": "密码重置邮件已发送"}
-
-    # 这里应该生成密码重置令牌并发送邮件
-    # 为了演示，我们仅返回成功消息
-    return {"message": "密码重置邮件已发送"}
+    except Exception as e:
+        print(f"发送密码重置邮件失败: {str(e)}")
+        # 为了安全，即使发送失败也返回成功消息
+        return {"message": "密码重置邮件已发送"}

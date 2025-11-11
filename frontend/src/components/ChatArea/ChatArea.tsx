@@ -33,8 +33,9 @@ const ChatArea = ({ sessionId, onCreateSession, onMessageSent }: ChatAreaProps) 
 
   // 从后端加载历史消息
   useEffect(() => {
-    // 如果是新会话，不检查会话是否存在，等待用户发送第一条消息时再创建
+    // 如果是新会话，清空消息列表
     if (sessionId === "new") {
+      setMessages([]);
       return;
     }
 

@@ -47,7 +47,8 @@ class UserWithToken(User):
 # 用户和令牌分离的响应模型
 class UserAndToken(BaseModel):
     user: User
-    token: str
+    token: Optional[str] = None
+    message: Optional[str] = None
 
 # 访客用户模型
 class GuestUser(UserBase):

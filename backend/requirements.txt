@@ -2,6 +2,9 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 sqlalchemy==2.0.23
 alembic==1.12.1
+# Supabase客户端
+supabase==1.0.3
+# PostgreSQL驱动
 psycopg2-binary==2.9.9
 python-jose[cryptography]==3.3.0
 bcrypt==3.2.2
