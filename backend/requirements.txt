@@ -13,9 +13,9 @@ python-multipart==0.0.6
 python-decouple==3.8
 email-validator==2.1.0
 pydantic[email]==2.5.0
-httpx==0.25.2
+httpx==0.23.0
 websockets==10.4
-numpy==1.21.0
+numpy==1.26.4
 # 音频处理依赖
 librosa==0.10.1
 scipy==1.11.4
